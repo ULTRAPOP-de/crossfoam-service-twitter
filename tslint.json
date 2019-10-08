@@ -1,0 +1,11 @@
+{
+  "extends": "./tslint-recommended.json",
+  "defaultSeverity": "error",
+  "jsRules": {},
+  "rules": {
+    "no-console": {
+      "severity": "warning"
+    } 
+  },
+  "rulesDirectory": []
+}
