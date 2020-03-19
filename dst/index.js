@@ -63,7 +63,7 @@ exports.authRequired = authRequired;
 var testAuth = function (data) {
     cb.setToken(data.oauth_token, data.oauth_token_secret);
     return cb.__call("account_verifyCredentials", {}).then(function (result) {
-        // TODO: I guess, this can also return invalid credential info, needs handling of result
+        console.log(result);
         return false;
     });
 };
@@ -273,7 +273,6 @@ var getFriendsIds = function (screenName, userId, centralNode, nUuid, cursor, ti
                 Object.assign(params, { user_id: userId });
             }
             return cbCall("friends_ids", params).then(function (result) {
-                console.log("friends_ids", result);
                 var errorAnalysis = cbErrorHandling(result);
                 if (errorAnalysis === "again") {
                     queue.call(config_js_1.default.service_key + "--getFriendsIds", [
@@ -287,8 +286,7 @@ var getFriendsIds = function (screenName, userId, centralNode, nUuid, cursor, ti
                 }
                 else {
                     if (result.reply.ids === null) {
-                        console.log("ids === null", result);
-                        // So far not able to figure
+                        // So far not able to figure this out
                         queue.call(config_js_1.default.service_key + "--getFriendsIds", [
                             screenName, userId, centralNode,
                             nUuid, cursor,
@@ -393,7 +391,6 @@ var getFriends = function (screenName, userId, centralNode, nUuid, cursor, times
                     console.log("AAAAHHHHH auth me!");
                 }
                 else {
-                    console.log(result);
                     return cfData.get("s--" + config_js_1.default.service_key + "--a--" + centralNode + "-" + nUuid + "--n", {})
                         .then(function (nodes) {
                         result.reply.users.forEach(function (user) {
@@ -450,7 +447,6 @@ var getUsers = function (centralNode, nUuid, timestamp, uniqueID, queue) {
                 user_id: query.join(","),
             };
             return cbCall("users_lookup", params).then(function (result) {
-                console.log("users_lookup", result);
                 var errorAnalysis = cbErrorHandling(result);
                 if (errorAnalysis === "again") {
                     queue.call(config_js_1.default.service_key + "--getUsers", [

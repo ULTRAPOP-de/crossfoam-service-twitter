@@ -32,7 +32,7 @@ const testAuth = (data: any): Promise<boolean> => {
     "account_verifyCredentials",
     {},
   ).then((result) => {
-    // TODO: I guess, this can also return invalid credential info, needs handling of result
+    console.log(result);
     return false;
   });
 };
@@ -275,8 +275,6 @@ const getFriendsIds = (  screenName: string, userId: string, centralNode: string
 
         return cbCall("friends_ids", params).then((result) => {
 
-          console.log("friends_ids", result);
-
           const errorAnalysis = cbErrorHandling(result);
 
           if (errorAnalysis === "again") {
@@ -292,9 +290,7 @@ const getFriendsIds = (  screenName: string, userId: string, centralNode: string
 
             if (result.reply.ids === null) {
 
-              console.log("ids === null", result);
-
-              // So far not able to figure
+              // So far not able to figure this out
               queue.call(config.service_key + "--getFriendsIds", [
                 screenName, userId, centralNode,
                 nUuid, cursor,
@@ -415,8 +411,6 @@ const getFriends = (  screenName: string, userId: string, centralNode: string,
             console.log("AAAAHHHHH auth me!");
           } else {
 
-            console.log(result);
-
             return cfData.get(`s--${config.service_key}--a--${centralNode}-${nUuid}--n`, {})
               .then((nodes) => {
 
@@ -482,8 +476,6 @@ const getUsers = (  centralNode: string, nUuid: string,
       };
 
       return cbCall("users_lookup", params).then((result) => {
-
-        console.log("users_lookup", result);
 
         const errorAnalysis = cbErrorHandling(result);
 
