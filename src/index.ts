@@ -26,14 +26,24 @@ const authRequired = (): Promise<boolean> => {
     });
 };
 
+const asyncAuthRequired = async (): Promise<boolean> => {
+  const r = await authRequired();
+  return r;
+}
+
 const testAuth = (data: any): Promise<boolean> => {
   cb.setToken(data.oauth_token, data.oauth_token_secret);
   return cb.__call(
     "account_verifyCredentials",
     {},
   ).then((result) => {
-    console.log(result);
-    return false;
+    if ("reply" in result &&
+        "httpstatus" in result.reply &&
+        result.reply.httpstatus === 200
+    ){
+      return false;
+    }
+    return true;
   });
 };
 
@@ -41,13 +51,13 @@ const createOptions = (htmlContainer: HTMLElement) => {
   authRequired()
     .then((required) => {
       if (required) {
-        htmlContainer.innerHTML = "<button id='twitter--auth-button'>Authorize Twitter</button>";
+        htmlContainer.innerHTML = `<p>${browser.i18n.getMessage("servicesTwitterAuthorizeNote")}</p><br /><button id='twitter--auth-button'>${browser.i18n.getMessage("servicesTwitterAuthorize")}</button>`;
         document.getElementById("twitter--auth-button")
           .addEventListener("click", () => {
             auth(htmlContainer);
           });
       } else {
-        htmlContainer.innerHTML = "Twitter is authorized and ready to go.";
+        htmlContainer.innerHTML = browser.i18n.getMessage("servicesTwitterAuthorized");
       }
     })
     .catch((err) => {
@@ -57,7 +67,6 @@ const createOptions = (htmlContainer: HTMLElement) => {
 
 const cbCall = (endpoint: string, params: {}): Promise<any> => {
   // TODO: Check if authentication is still valid, otherwise throw error
-
   return cfData.get(authTokenKey)
     .then((data) => {
       cb.setToken(data.oauth_token, data.oauth_token_secret);
@@ -66,7 +75,6 @@ const cbCall = (endpoint: string, params: {}): Promise<any> => {
 };
 
 const cbErrorHandling = (result: any): string => {
-
   if (
     ("errors" in result.reply && result.reply.errors.length >= 1)
     || "error" in result.reply
@@ -74,17 +82,12 @@ const cbErrorHandling = (result: any): string => {
 
     if (("errors" in result.reply && result.reply.errors[0].message === "Not authorized.")
        || result.reply.httpstatus === 401
+       || ("errors" in result.reply && "code" in result.reply.errors[0] && result.reply.errors[0].code === 89)
        || ("error" in result.reply && result.reply.error === "Not authorized.")) {
 
-      // TODO: Handle losing authorization
-      let isAuthRequired = false;
-
-      (async () => {
-        isAuthRequired = await authRequired();
-      })();
+      let isAuthRequired = asyncAuthRequired();
 
       if (isAuthRequired) {
-        console.log("not authorized");
         return "auth";
       } else {
         return "again";
@@ -139,21 +142,22 @@ const auth = (htmlContainer: HTMLElement): Promise<boolean> => {
   })
   .then(() => {
     // Modify the html add a click listener with connection to new function
-    htmlContainer.innerHTML = "<input \
+    htmlContainer.innerHTML = `<p>${browser.i18n.getMessage("servicesTwitterAuthorizeNote")}</p><br />\
+              <input \
                 type='text' \
                 placeholder='Twitter PIN' \
                 id='twitter--auth-pin' />\
               <button \
                 id='twitter--auth-button'>\
-                Finish authorization\
-              </button>";
+                ${browser.i18n.getMessage("servicesTwitterAuthorizeFinish")}\
+              </button>`;
     document.getElementById("twitter--auth-button")
       .addEventListener("click", () => {
         const value = (document.getElementById("twitter--auth-pin") as HTMLInputElement).value;
         if (value && value.length === 7) {
           auth2(htmlContainer, value);
         } else {
-          alert("Please input a valid 7-digit Twitter-Auth-Pin.");
+          alert(browser.i18n.getMessage("servicesTwitterAuthAlert"));
         }
       });
   });
@@ -165,7 +169,7 @@ const auth2 = (htmlContainer: HTMLElement, pin: string) => {
     {oauth_verifier: pin},
   ).then((reply) => {
     cfData.set(authTokenKey, reply.reply);
-    htmlContainer.innerHTML = "Twitter is authorized and ready to go.";
+    htmlContainer.innerHTML = browser.i18n.getMessage("servicesTwitterAuthorized");
   });
 };
 
@@ -396,8 +400,6 @@ const getFriends = (  screenName: string, userId: string, centralNode: string,
         }
 
         return cbCall("friends_list", params).then((result) => {
-
-          console.log("friends_list", result);
 
           const errorAnalysis = cbErrorHandling(result);
 

@@ -60,25 +60,40 @@ var authRequired = function () {
     });
 };
 exports.authRequired = authRequired;
+var asyncAuthRequired = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var r;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, authRequired()];
+            case 1:
+                r = _a.sent();
+                return [2 /*return*/, r];
+        }
+    });
+}); };
 var testAuth = function (data) {
     cb.setToken(data.oauth_token, data.oauth_token_secret);
     return cb.__call("account_verifyCredentials", {}).then(function (result) {
-        console.log(result);
-        return false;
+        if ("reply" in result &&
+            "httpstatus" in result.reply &&
+            result.reply.httpstatus === 200) {
+            return false;
+        }
+        return true;
     });
 };
 var createOptions = function (htmlContainer) {
     authRequired()
         .then(function (required) {
         if (required) {
-            htmlContainer.innerHTML = "<button id='twitter--auth-button'>Authorize Twitter</button>";
+            htmlContainer.innerHTML = "<p>" + browser.i18n.getMessage("servicesTwitterAuthorizeNote") + "</p><br /><button id='twitter--auth-button'>" + browser.i18n.getMessage("servicesTwitterAuthorize") + "</button>";
             document.getElementById("twitter--auth-button")
                 .addEventListener("click", function () {
                 auth(htmlContainer);
             });
         }
         else {
-            htmlContainer.innerHTML = "Twitter is authorized and ready to go.";
+            htmlContainer.innerHTML = browser.i18n.getMessage("servicesTwitterAuthorized");
         }
     })
         .catch(function (err) {
@@ -99,21 +114,10 @@ var cbErrorHandling = function (result) {
         || "error" in result.reply) {
         if (("errors" in result.reply && result.reply.errors[0].message === "Not authorized.")
             || result.reply.httpstatus === 401
+            || ("errors" in result.reply && "code" in result.reply.errors[0] && result.reply.errors[0].code === 89)
             || ("error" in result.reply && result.reply.error === "Not authorized.")) {
-            // TODO: Handle losing authorization
-            var isAuthRequired_1 = false;
-            (function () { return __awaiter(void 0, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0: return [4 /*yield*/, authRequired()];
-                        case 1:
-                            isAuthRequired_1 = _a.sent();
-                            return [2 /*return*/];
-                    }
-                });
-            }); })();
-            if (isAuthRequired_1) {
-                console.log("not authorized");
+            var isAuthRequired = asyncAuthRequired();
+            if (isAuthRequired) {
                 return "auth";
             }
             else {
@@ -155,14 +159,7 @@ var auth = function (htmlContainer) {
     })
         .then(function () {
         // Modify the html add a click listener with connection to new function
-        htmlContainer.innerHTML = "<input \
-                type='text' \
-                placeholder='Twitter PIN' \
-                id='twitter--auth-pin' />\
-              <button \
-                id='twitter--auth-button'>\
-                Finish authorization\
-              </button>";
+        htmlContainer.innerHTML = "<p>" + browser.i18n.getMessage("servicesTwitterAuthorizeNote") + "</p><br />              <input                 type='text'                 placeholder='Twitter PIN'                 id='twitter--auth-pin' />              <button                 id='twitter--auth-button'>                " + browser.i18n.getMessage("servicesTwitterAuthorizeFinish") + "              </button>";
         document.getElementById("twitter--auth-button")
             .addEventListener("click", function () {
             var value = document.getElementById("twitter--auth-pin").value;
@@ -170,7 +167,7 @@ var auth = function (htmlContainer) {
                 auth2(htmlContainer, value);
             }
             else {
-                alert("Please input a valid 7-digit Twitter-Auth-Pin.");
+                alert(browser.i18n.getMessage("servicesTwitterAuthAlert"));
             }
         });
     });
@@ -179,7 +176,7 @@ exports.auth = auth;
 var auth2 = function (htmlContainer, pin) {
     return cb.__call("oauth_accessToken", { oauth_verifier: pin }).then(function (reply) {
         cfData.set(authTokenKey, reply.reply);
-        htmlContainer.innerHTML = "Twitter is authorized and ready to go.";
+        htmlContainer.innerHTML = browser.i18n.getMessage("servicesTwitterAuthorized");
     });
 };
 var getBiggerPicture = function (url) {
@@ -378,7 +375,6 @@ var getFriends = function (screenName, userId, centralNode, nUuid, cursor, times
                 Object.assign(params, { user_id: userId });
             }
             return cbCall("friends_list", params).then(function (result) {
-                console.log("friends_list", result);
                 var errorAnalysis = cbErrorHandling(result);
                 if (errorAnalysis === "again") {
                     queue.call(config_js_1.default.service_key + "--getFriends", [
