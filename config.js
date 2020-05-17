@@ -11,5 +11,6 @@ export default
     {"name": "getFriendsIds", "paramCount": [5,5], "skip": true, "passDown": true, "timeout": 60000},
     {"name": "getFriends", "paramCount": [5,5], "skip": true, "passDown": true, "timeout": 60000}
   ],
-  "regex":/http[s]*:\/\/[wwww.]*twitter\.com\/((?!(settings|hashtag|status|hashtags|explore|notifications|messages|home|compose|search|tos))[^\/]{3,})/
+  "regex":/http[s]*:\/\/[wwww.]*twitter\.com\/((?!(settings|hashtag|status|hashtags|explore|notifications|messages|home|compose|search|tos))[^\/]{3,})/,
+  "regex_exclude":/http[s]*:\/\/[wwww.]*twitter\.com\/((?!(settings|hashtag|status|hashtags|explore|notifications|messages|home|compose|search|tos))[^\/]{3,})/
 }
