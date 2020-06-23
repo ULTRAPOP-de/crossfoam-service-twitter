@@ -29,7 +29,7 @@ const authRequired = (): Promise<boolean> => {
 const asyncAuthRequired = async (): Promise<boolean> => {
   const r = await authRequired();
   return r;
-}
+};
 
 const testAuth = (data: any): Promise<boolean> => {
   cb.setToken(data.oauth_token, data.oauth_token_secret);
@@ -40,7 +40,7 @@ const testAuth = (data: any): Promise<boolean> => {
     if ("reply" in result &&
         "httpstatus" in result.reply &&
         result.reply.httpstatus === 200
-    ){
+    ) {
       return false;
     }
     return true;
@@ -85,7 +85,7 @@ const cbErrorHandling = (result: any): string => {
        || ("errors" in result.reply && "code" in result.reply.errors[0] && result.reply.errors[0].code === 89)
        || ("error" in result.reply && result.reply.error === "Not authorized.")) {
 
-      let isAuthRequired = asyncAuthRequired();
+      const isAuthRequired = asyncAuthRequired();
 
       if (isAuthRequired) {
         return "auth";
@@ -460,7 +460,7 @@ const getUsers = (  centralNode: string, nUuid: string,
     let more = false;
 
     // TODO: this should be relative to the overall size of the core-network
-    const proxySizeLimit = 5;
+    const proxySizeLimit = data[0].nodes.length / 20;
 
     Object.keys(data[0].proxyKeys).forEach((proxy) => {
       if (!(proxy in data[1]) && data[0].proxies[data[0].proxyKeys[proxy]][5] > proxySizeLimit) {
