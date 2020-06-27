@@ -228,6 +228,7 @@ const getUser = (screenName: string, timestamp: number, uniqueID: string, queue:
               });
             })
             .then(() => {
+              console.log("added");
               queue.call(config.service_key + "--getFriendsIds", [screenName, undefined, screenName, nUuid, -1],
                     timestamp, uniqueID);
               // queue.call("getFollowersIds", [screenName, true, nUuid, -1]);
@@ -255,9 +256,13 @@ const getFriendsIds = (  screenName: string, userId: string, centralNode: string
                          nUuid: string, cursor: string,
                          timestamp: number, uniqueID: string, queue: any): Promise<any> => {
 
-  // Check if this user is scrape-able
-  return scrapeAble(screenName, userId, centralNode, nUuid)
-    .then((isScrapeAble) => {
+  return cfData.get(`s--${config.service_key}--nw--${centralNode}`, {})
+    .then((networkObject) => {
+      networkObject[nUuid].state = "loading";
+      return cfData.set(`s--${config.service_key}--nw--${centralNode}`, networkObject);
+    }).then(() => {
+      return scrapeAble(screenName, userId, centralNode, nUuid)
+    }).then((isScrapeAble) => {
 
       if (!isScrapeAble && screenName !== centralNode) {
 

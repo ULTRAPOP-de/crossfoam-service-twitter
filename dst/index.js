@@ -228,6 +228,7 @@ var getUser = function (screenName, timestamp, uniqueID, queue) {
                     });
                 })
                     .then(function () {
+                    console.log("added");
                     queue.call(config_js_1.default.service_key + "--getFriendsIds", [screenName, undefined, screenName, nUuid, -1], timestamp, uniqueID);
                     // queue.call("getFollowersIds", [screenName, true, nUuid, -1]);
                     return Promise.resolve();
@@ -251,9 +252,13 @@ var scrapeAble = function (screenName, userId, centralNode, nUuid) {
     });
 };
 var getFriendsIds = function (screenName, userId, centralNode, nUuid, cursor, timestamp, uniqueID, queue) {
-    // Check if this user is scrape-able
-    return scrapeAble(screenName, userId, centralNode, nUuid)
-        .then(function (isScrapeAble) {
+    return cfData.get("s--" + config_js_1.default.service_key + "--nw--" + centralNode, {})
+        .then(function (networkObject) {
+        networkObject[nUuid].state = "loading";
+        return cfData.set("s--" + config_js_1.default.service_key + "--nw--" + centralNode, networkObject);
+    }).then(function () {
+        return scrapeAble(screenName, userId, centralNode, nUuid);
+    }).then(function (isScrapeAble) {
         if (!isScrapeAble && screenName !== centralNode) {
             return Promise.resolve();
         }
