@@ -1,6 +1,6 @@
 {
   "name": "@crossfoam/service-twitter",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Twitter Service module",
   "main": "dst/index.js",
   "scripts": {
@@ -35,10 +35,10 @@
     "@types/core-js": "^2.5.0",
     "nodemon": "^1.18.9",
     "tslint": "^5.18.0",
-    "web-ext-types": "^3.1.0"
+    "web-ext-types": "^3.1.0",
+    "typescript": "^3.2.2"
   },
   "dependencies": {
-    "@crossfoam/data": "^1.0.1",
-    "typescript": "^3.2.2"
+    "@crossfoam/data": "^1.0.3"
   }
 }
