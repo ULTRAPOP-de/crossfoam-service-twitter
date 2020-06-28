@@ -1,6 +1,6 @@
 {
   "name": "@crossfoam/service-twitter",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "Twitter Service module",
   "main": "dst/index.js",
   "scripts": {
@@ -39,6 +39,7 @@
     "typescript": "^3.2.2"
   },
   "dependencies": {
-    "@crossfoam/data": "^1.0.3"
+    "@crossfoam/data": "^1.0.3",
+    "@crossfoam/ui-helpers": "^1.0.8"
   }
 }

@@ -37,6 +37,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var cfData = require("@crossfoam/data");
+var ui_helpers_1 = require("@crossfoam/ui-helpers");
 var config_js_1 = require("../config.js");
 exports.config = config_js_1.default;
 // Allow content_scripts to include the services module without codebird
@@ -86,14 +87,14 @@ var createOptions = function (htmlContainer) {
     authRequired()
         .then(function (required) {
         if (required) {
-            htmlContainer.innerHTML = "<p>" + browser.i18n.getMessage("servicesTwitterAuthorizeNote") + "</p><br /><button id='twitter--auth-button'>" + browser.i18n.getMessage("servicesTwitterAuthorize") + "</button>";
+            ui_helpers_1.addHTML(htmlContainer, "<p>" + browser.i18n.getMessage("servicesTwitterAuthorizeNote") + "</p><br /><button id='twitter--auth-button'>" + browser.i18n.getMessage("servicesTwitterAuthorize") + "</button>");
             document.getElementById("twitter--auth-button")
                 .addEventListener("click", function () {
                 auth(htmlContainer);
             });
         }
         else {
-            htmlContainer.innerHTML = browser.i18n.getMessage("servicesTwitterAuthorized");
+            ui_helpers_1.addHTML(htmlContainer, browser.i18n.getMessage("servicesTwitterAuthorized"));
         }
     })
         .catch(function (err) {
@@ -159,7 +160,7 @@ var auth = function (htmlContainer) {
     })
         .then(function () {
         // Modify the html add a click listener with connection to new function
-        htmlContainer.innerHTML = "<p>" + browser.i18n.getMessage("servicesTwitterAuthorizeNote") + "</p><br />              <input                 type='text'                 placeholder='Twitter PIN'                 id='twitter--auth-pin' />              <button                 id='twitter--auth-button'>                " + browser.i18n.getMessage("servicesTwitterAuthorizeFinish") + "              </button>";
+        ui_helpers_1.addHTML(htmlContainer, "<p>" + browser.i18n.getMessage("servicesTwitterAuthorizeNote") + "</p><br />              <input                 type='text'                 placeholder='Twitter PIN'                 id='twitter--auth-pin' />              <button                 id='twitter--auth-button'>                " + browser.i18n.getMessage("servicesTwitterAuthorizeFinish") + "              </button>");
         document.getElementById("twitter--auth-button")
             .addEventListener("click", function () {
             var value = document.getElementById("twitter--auth-pin").value;
@@ -176,7 +177,7 @@ exports.auth = auth;
 var auth2 = function (htmlContainer, pin) {
     return cb.__call("oauth_accessToken", { oauth_verifier: pin }).then(function (reply) {
         cfData.set(authTokenKey, reply.reply);
-        htmlContainer.innerHTML = browser.i18n.getMessage("servicesTwitterAuthorized");
+        ui_helpers_1.addHTML(htmlContainer, browser.i18n.getMessage("servicesTwitterAuthorized"));
     });
 };
 var getBiggerPicture = function (url) {

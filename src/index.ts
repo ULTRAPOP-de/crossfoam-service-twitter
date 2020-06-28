@@ -2,6 +2,7 @@
 declare function Codebird(): void;
 
 import * as cfData from "@crossfoam/data";
+import { addHTML } from "@crossfoam/ui-helpers";
 import config from "../config.js";
 
 // Allow content_scripts to include the services module without codebird
@@ -51,13 +52,13 @@ const createOptions = (htmlContainer: HTMLElement) => {
   authRequired()
     .then((required) => {
       if (required) {
-        htmlContainer.innerHTML = `<p>${browser.i18n.getMessage("servicesTwitterAuthorizeNote")}</p><br /><button id='twitter--auth-button'>${browser.i18n.getMessage("servicesTwitterAuthorize")}</button>`;
+        addHTML(htmlContainer, `<p>${browser.i18n.getMessage("servicesTwitterAuthorizeNote")}</p><br /><button id='twitter--auth-button'>${browser.i18n.getMessage("servicesTwitterAuthorize")}</button>`);
         document.getElementById("twitter--auth-button")
           .addEventListener("click", () => {
             auth(htmlContainer);
           });
       } else {
-        htmlContainer.innerHTML = browser.i18n.getMessage("servicesTwitterAuthorized");
+        addHTML(htmlContainer, browser.i18n.getMessage("servicesTwitterAuthorized"));
       }
     })
     .catch((err) => {
@@ -142,7 +143,7 @@ const auth = (htmlContainer: HTMLElement): Promise<boolean> => {
   })
   .then(() => {
     // Modify the html add a click listener with connection to new function
-    htmlContainer.innerHTML = `<p>${browser.i18n.getMessage("servicesTwitterAuthorizeNote")}</p><br />\
+    addHTML(htmlContainer, `<p>${browser.i18n.getMessage("servicesTwitterAuthorizeNote")}</p><br />\
               <input \
                 type='text' \
                 placeholder='Twitter PIN' \
@@ -150,7 +151,7 @@ const auth = (htmlContainer: HTMLElement): Promise<boolean> => {
               <button \
                 id='twitter--auth-button'>\
                 ${browser.i18n.getMessage("servicesTwitterAuthorizeFinish")}\
-              </button>`;
+              </button>`);
     document.getElementById("twitter--auth-button")
       .addEventListener("click", () => {
         const value = (document.getElementById("twitter--auth-pin") as HTMLInputElement).value;
@@ -169,7 +170,7 @@ const auth2 = (htmlContainer: HTMLElement, pin: string) => {
     {oauth_verifier: pin},
   ).then((reply) => {
     cfData.set(authTokenKey, reply.reply);
-    htmlContainer.innerHTML = browser.i18n.getMessage("servicesTwitterAuthorized");
+    addHTML(htmlContainer, browser.i18n.getMessage("servicesTwitterAuthorized"));
   });
 };
 
