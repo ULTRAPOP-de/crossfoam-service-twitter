@@ -202,6 +202,7 @@ var getUser = function (screenName, timestamp, uniqueID, queue) {
             return Promise.resolve();
         }
         else if (errorAnalysis === "auth") {
+            // tslint:disable-next-line:no-console
             console.log("AAAAHHHHH auth me!");
         }
         else {
@@ -228,7 +229,6 @@ var getUser = function (screenName, timestamp, uniqueID, queue) {
                     });
                 })
                     .then(function () {
-                    console.log("added");
                     queue.call(config_js_1.default.service_key + "--getFriendsIds", [screenName, undefined, screenName, nUuid, -1], timestamp, uniqueID);
                     // queue.call("getFollowersIds", [screenName, true, nUuid, -1]);
                     return Promise.resolve();
@@ -284,6 +284,7 @@ var getFriendsIds = function (screenName, userId, centralNode, nUuid, cursor, ti
                     return Promise.resolve();
                 }
                 else if (errorAnalysis === "auth") {
+                    // tslint:disable-next-line:no-console
                     console.log("AAAAHHHHH auth me!");
                 }
                 else {
@@ -389,6 +390,7 @@ var getFriends = function (screenName, userId, centralNode, nUuid, cursor, times
                     return Promise.resolve();
                 }
                 else if (errorAnalysis === "auth") {
+                    // tslint:disable-next-line:no-console
                     console.log("AAAAHHHHH auth me!");
                 }
                 else {
@@ -456,6 +458,7 @@ var getUsers = function (centralNode, nUuid, timestamp, uniqueID, queue) {
                     return Promise.resolve();
                 }
                 else if (errorAnalysis === "auth") {
+                    // tslint:disable-next-line:no-console
                     console.log("AAAAHHHHH auth me!");
                 }
                 else {

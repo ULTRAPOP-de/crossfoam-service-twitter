@@ -202,6 +202,7 @@ const getUser = (screenName: string, timestamp: number, uniqueID: string, queue:
 
       return Promise.resolve();
     } else if ( errorAnalysis === "auth") {
+      // tslint:disable-next-line:no-console
       console.log("AAAAHHHHH auth me!");
     } else {
 
@@ -228,7 +229,6 @@ const getUser = (screenName: string, timestamp: number, uniqueID: string, queue:
               });
             })
             .then(() => {
-              console.log("added");
               queue.call(config.service_key + "--getFriendsIds", [screenName, undefined, screenName, nUuid, -1],
                     timestamp, uniqueID);
               // queue.call("getFollowersIds", [screenName, true, nUuid, -1]);
@@ -261,7 +261,7 @@ const getFriendsIds = (  screenName: string, userId: string, centralNode: string
       networkObject[nUuid].state = "loading";
       return cfData.set(`s--${config.service_key}--nw--${centralNode}`, networkObject);
     }).then(() => {
-      return scrapeAble(screenName, userId, centralNode, nUuid)
+      return scrapeAble(screenName, userId, centralNode, nUuid);
     }).then((isScrapeAble) => {
 
       if (!isScrapeAble && screenName !== centralNode) {
@@ -294,6 +294,7 @@ const getFriendsIds = (  screenName: string, userId: string, centralNode: string
 
             return Promise.resolve();
           } else if ( errorAnalysis === "auth") {
+            // tslint:disable-next-line:no-console
             console.log("AAAAHHHHH auth me!");
           } else {
 
@@ -415,6 +416,7 @@ const getFriends = (  screenName: string, userId: string, centralNode: string,
             ], timestamp, uniqueID);
             return Promise.resolve();
           } else if ( errorAnalysis === "auth") {
+            // tslint:disable-next-line:no-console
             console.log("AAAAHHHHH auth me!");
           } else {
 
@@ -492,6 +494,7 @@ const getUsers = (  centralNode: string, nUuid: string,
           ], timestamp, uniqueID);
           return Promise.resolve();
         } else if ( errorAnalysis === "auth") {
+          // tslint:disable-next-line:no-console
           console.log("AAAAHHHHH auth me!");
         } else {
 
