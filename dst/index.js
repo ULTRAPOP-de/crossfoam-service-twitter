@@ -39,10 +39,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.removeNetwork = exports.getUsers = exports.getUser = exports.getFriendsIds = exports.getFriends = exports.createOptions = exports.config = exports.authRequired = exports.auth = void 0;
 var cfData = require("@crossfoam/data");
 var ui_helpers_1 = require("@crossfoam/ui-helpers");
-var twitter_lite_1 = require("twitter-lite");
 var config_js_1 = require("../config.js");
 exports.config = config_js_1.default;
-var client = new twitter_lite_1.default({
+/* tslint:disable */
+var Twitter = require("twitter-lite");
+/* tslint:enable */
+var client = new Twitter({
     consumer_key: config_js_1.default.api_key,
     consumer_secret: config_js_1.default.api_secret,
 });
@@ -101,7 +103,7 @@ var createOptions = function (htmlContainer) {
 };
 exports.createOptions = createOptions;
 var twApp = function (data) {
-    return new twitter_lite_1.default({
+    return new Twitter({
         access_token_key: data.oauth_token,
         access_token_secret: data.oauth_token_secret,
         consumer_key: config_js_1.default.api_key,
@@ -116,7 +118,6 @@ var twCall = function (endpoint, params) {
     });
 };
 var twErrorHandling = function (result) {
-    console.log(result);
     if (("errors" in result && result.errors.length >= 1)
         || "error" in result) {
         if (("errors" in result && result.errors[0].message === "Not authorized.")

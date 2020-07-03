@@ -1,7 +1,10 @@
 import * as cfData from "@crossfoam/data";
 import { addHTML } from "@crossfoam/ui-helpers";
-import Twitter from "twitter-lite";
 import config from "../config.js";
+
+/* tslint:disable */
+const Twitter = require("twitter-lite");
+/* tslint:enable */
 
 const client = new Twitter({
   consumer_key: config.api_key,
@@ -75,7 +78,6 @@ const twCall = (endpoint: string, params: {}): Promise<any> => {
 };
 
 const twErrorHandling = (result: any): string => {
-  console.log(result);
   if (
     ("errors" in result && result.errors.length >= 1)
     || "error" in result
