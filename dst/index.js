@@ -36,17 +36,16 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.removeNetwork = exports.getUsers = exports.getUser = exports.getFriendsIds = exports.getFriends = exports.createOptions = exports.config = exports.authRequired = exports.auth = void 0;
 var cfData = require("@crossfoam/data");
 var ui_helpers_1 = require("@crossfoam/ui-helpers");
+var twitter_lite_1 = require("twitter-lite");
 var config_js_1 = require("../config.js");
 exports.config = config_js_1.default;
-// Allow content_scripts to include the services module without codebird
-var cb;
-if (typeof Codebird === "function") {
-    cb = new Codebird();
-    cb.setUseProxy(false);
-    cb.setConsumerKey(config_js_1.default.api_key, config_js_1.default.api_secret);
-}
+var client = new twitter_lite_1.default({
+    consumer_key: config_js_1.default.api_key,
+    consumer_secret: config_js_1.default.api_secret,
+});
 var requestTokenKey = "twitter--request-token";
 var authTokenKey = "twitter--auth-token";
 var authRequired = function () {
@@ -73,11 +72,10 @@ var asyncAuthRequired = function () { return __awaiter(void 0, void 0, void 0, f
     });
 }); };
 var testAuth = function (data) {
-    cb.setToken(data.oauth_token, data.oauth_token_secret);
-    return cb.__call("account_verifyCredentials", {}).then(function (result) {
-        if ("reply" in result &&
-            "httpstatus" in result.reply &&
-            result.reply.httpstatus === 200) {
+    return twApp(data).get("account/verify_credentials")
+        .then(function (result) {
+        if ("_headers" in result && "map" in result._headers &&
+            result._headers.map.status.indexOf("200") !== -1) {
             return false;
         }
         return true;
@@ -102,21 +100,29 @@ var createOptions = function (htmlContainer) {
     });
 };
 exports.createOptions = createOptions;
-var cbCall = function (endpoint, params) {
+var twApp = function (data) {
+    return new twitter_lite_1.default({
+        access_token_key: data.oauth_token,
+        access_token_secret: data.oauth_token_secret,
+        consumer_key: config_js_1.default.api_key,
+        consumer_secret: config_js_1.default.api_secret,
+    });
+};
+var twCall = function (endpoint, params) {
     // TODO: Check if authentication is still valid, otherwise throw error
     return cfData.get(authTokenKey)
         .then(function (data) {
-        cb.setToken(data.oauth_token, data.oauth_token_secret);
-        return cb.__call(endpoint, params);
+        return twApp(data).get(endpoint, params);
     });
 };
-var cbErrorHandling = function (result) {
-    if (("errors" in result.reply && result.reply.errors.length >= 1)
-        || "error" in result.reply) {
-        if (("errors" in result.reply && result.reply.errors[0].message === "Not authorized.")
-            || result.reply.httpstatus === 401
-            || ("errors" in result.reply && "code" in result.reply.errors[0] && result.reply.errors[0].code === 89)
-            || ("error" in result.reply && result.reply.error === "Not authorized.")) {
+var twErrorHandling = function (result) {
+    console.log(result);
+    if (("errors" in result && result.errors.length >= 1)
+        || "error" in result) {
+        if (("errors" in result && result.errors[0].message === "Not authorized.")
+            || result.httpstatus === 401
+            || ("errors" in result && "code" in result.errors[0] && result.errors[0].code === 89)
+            || ("error" in result && result.error === "Not authorized.")) {
             var isAuthRequired = asyncAuthRequired();
             if (isAuthRequired) {
                 return "auth";
@@ -125,7 +131,7 @@ var cbErrorHandling = function (result) {
                 return "again";
             }
         }
-        else if ("errors" in result.reply && result.reply.errors[0].code === 88) {
+        else if ("errors" in result && result.errors[0].code === 88) {
             return "again";
         }
         else {
@@ -133,7 +139,7 @@ var cbErrorHandling = function (result) {
             return "again";
         }
     }
-    else if (result.reply.httpstatus === 0) {
+    else if (result.httpstatus === 0) {
         return "again";
     }
     else {
@@ -147,20 +153,16 @@ var cbErrorHandling = function (result) {
  * The data object gives access to the data storage functionalities
  */
 var auth = function (htmlContainer) {
-    return cb.__call("oauth_requestToken", { oauth_callback: "oob" })
+    return client.getRequestToken("oob")
         .then(function (reply) {
-        return cfData.set(requestTokenKey, reply.reply);
+        return cfData.set(requestTokenKey, reply);
     })
         .then(function (requestToken) {
-        cb.setToken(requestToken.oauth_token, requestToken.oauth_token_secret);
-        return cb.__call("oauth_authorize", {});
-    })
-        .then(function (authUrl) {
-        return browser.tabs.create({ url: authUrl.reply });
+        return browser.tabs.create({ url: "https://api.twitter.com/oauth/authenticate?oauth_token=" + requestToken.oauth_token });
     })
         .then(function () {
         // Modify the html add a click listener with connection to new function
-        ui_helpers_1.addHTML(htmlContainer, "<p>" + browser.i18n.getMessage("servicesTwitterAuthorizeNote") + "</p><br />              <input                 type='text'                 placeholder='Twitter PIN'                 id='twitter--auth-pin' />              <button                 id='twitter--auth-button'>                " + browser.i18n.getMessage("servicesTwitterAuthorizeFinish") + "              </button>");
+        ui_helpers_1.addHTML(htmlContainer, "<p>" + browser.i18n.getMessage("servicesTwitterAuthorizeNote") + "</p><br />                <input                   type='text'                   placeholder='Twitter PIN'                   id='twitter--auth-pin' />                <button                   id='twitter--auth-button'>                  " + browser.i18n.getMessage("servicesTwitterAuthorizeFinish") + "                </button>");
         document.getElementById("twitter--auth-button")
             .addEventListener("click", function () {
             var value = document.getElementById("twitter--auth-pin").value;
@@ -175,8 +177,14 @@ var auth = function (htmlContainer) {
 };
 exports.auth = auth;
 var auth2 = function (htmlContainer, pin) {
-    return cb.__call("oauth_accessToken", { oauth_verifier: pin }).then(function (reply) {
-        cfData.set(authTokenKey, reply.reply);
+    return cfData.get(requestTokenKey)
+        .then(function (token) {
+        return client.getAccessToken({
+            oauth_token: token.oauth_token,
+            oauth_verifier: pin,
+        });
+    }).then(function (reply) {
+        cfData.set(authTokenKey, reply);
         ui_helpers_1.addHTML(htmlContainer, browser.i18n.getMessage("servicesTwitterAuthorized"));
     });
 };
@@ -192,10 +200,10 @@ var getBiggerPicture = function (url) {
     return url;
 };
 var getUser = function (screenName, timestamp, uniqueID, queue) {
-    return cbCall("users_show", {
+    return twCall("users/show", {
         screen_name: screenName,
     }).then(function (result) {
-        var errorAnalysis = cbErrorHandling(result);
+        var errorAnalysis = twErrorHandling(result);
         if (errorAnalysis === "again") {
             queue.call(config_js_1.default.service_key + "--getUser", [
                 screenName,
@@ -221,12 +229,12 @@ var getUser = function (screenName, timestamp, uniqueID, queue) {
                 return cfData.set("s--" + config_js_1.default.service_key + "--nw--" + screenName, networkObject)
                     .then(function () {
                     return cfData.set("s--" + config_js_1.default.service_key + "--a--" + screenName + "-" + nUuid + "--c", {
-                        followers_count: result.reply.followers_count,
-                        friends_count: result.reply.friends_count,
+                        followers_count: result.followers_count,
+                        friends_count: result.friends_count,
                         handle: screenName,
-                        id: result.reply.id_str,
-                        image: getBiggerPicture(result.reply.profile_image_url_https),
-                        name: result.reply.name,
+                        id: result.id_str,
+                        image: getBiggerPicture(result.profile_image_url_https),
+                        name: result.name,
                     });
                 })
                     .then(function () {
@@ -275,8 +283,8 @@ var getFriendsIds = function (screenName, userId, centralNode, nUuid, cursor, ti
             else {
                 Object.assign(params, { user_id: userId });
             }
-            return cbCall("friends_ids", params).then(function (result) {
-                var errorAnalysis = cbErrorHandling(result);
+            return twCall("friends/ids", params).then(function (result) {
+                var errorAnalysis = twErrorHandling(result);
                 if (errorAnalysis === "again") {
                     queue.call(config_js_1.default.service_key + "--getFriendsIds", [
                         screenName, userId, centralNode,
@@ -289,7 +297,7 @@ var getFriendsIds = function (screenName, userId, centralNode, nUuid, cursor, ti
                     console.log("AAAAHHHHH auth me!");
                 }
                 else {
-                    if (result.reply.ids === null) {
+                    if (result.ids === null) {
                         // So far not able to figure this out
                         queue.call(config_js_1.default.service_key + "--getFriendsIds", [
                             screenName, userId, centralNode,
@@ -302,7 +310,7 @@ var getFriendsIds = function (screenName, userId, centralNode, nUuid, cursor, ti
                             .then(function (nodes) {
                             if (screenName === centralNode) {
                                 var newNodes_1 = {};
-                                result.reply.ids.forEach(function (id) {
+                                result.ids.forEach(function (id) {
                                     newNodes_1[id] = {
                                         followers: [],
                                         followers_count: 0,
@@ -317,7 +325,7 @@ var getFriendsIds = function (screenName, userId, centralNode, nUuid, cursor, ti
                             }
                             else {
                                 // make sure we don't have duplicates in here...
-                                result.reply.ids.forEach(function (newNode) {
+                                result.ids.forEach(function (newNode) {
                                     if (nodes[userId].friends.indexOf(newNode) === -1) {
                                         nodes[userId].friends.push(newNode);
                                     }
@@ -326,14 +334,14 @@ var getFriendsIds = function (screenName, userId, centralNode, nUuid, cursor, ti
                             return cfData.set("s--" + config_js_1.default.service_key + "--a--" + centralNode + "-" + nUuid + "--n", nodes);
                         })
                             .then(function (savedData) {
-                            if (result.reply.next_cursor_str && result.reply.next_cursor_str !== "0"
-                                && result.reply.next_cursor_str !== 0
+                            if (result.next_cursor_str && result.next_cursor_str !== "0"
+                                && result.next_cursor_str !== 0
                                 // LIMIT the number of friends of friends to 20.000
                                 // TODO: move to configs
                                 && savedData[userId].friends.length < 20000) {
                                 queue.call(config_js_1.default.service_key + "--getFriendsIds", [
                                     screenName, userId, centralNode,
-                                    nUuid, result.reply.next_cursor_str,
+                                    nUuid, result.next_cursor_str,
                                 ], timestamp, uniqueID);
                                 return Promise.resolve();
                             }
@@ -381,8 +389,8 @@ var getFriends = function (screenName, userId, centralNode, nUuid, cursor, times
             else {
                 Object.assign(params, { user_id: userId });
             }
-            return cbCall("friends_list", params).then(function (result) {
-                var errorAnalysis = cbErrorHandling(result);
+            return twCall("friends/list", params).then(function (result) {
+                var errorAnalysis = twErrorHandling(result);
                 if (errorAnalysis === "again") {
                     queue.call(config_js_1.default.service_key + "--getFriends", [
                         screenName, userId, centralNode,
@@ -397,7 +405,7 @@ var getFriends = function (screenName, userId, centralNode, nUuid, cursor, times
                 else {
                     return cfData.get("s--" + config_js_1.default.service_key + "--a--" + centralNode + "-" + nUuid + "--n", {})
                         .then(function (nodes) {
-                        result.reply.users.forEach(function (user) {
+                        result.users.forEach(function (user) {
                             if (user.id_str in nodes) {
                                 nodes[user.id_str].name = user.name;
                                 nodes[user.id_str].handle = user.screen_name;
@@ -411,9 +419,9 @@ var getFriends = function (screenName, userId, centralNode, nUuid, cursor, times
                         return cfData.set("s--" + config_js_1.default.service_key + "--a--" + centralNode + "-" + nUuid + "--n", nodes);
                     })
                         .then(function () {
-                        if (result.reply.next_cursor_str && result.reply.next_cursor_str !== "0"
-                            && result.reply.next_cursor_str !== 0) {
-                            queue.call(config_js_1.default.service_key + "--getFriends", [screenName, userId, centralNode, nUuid, result.reply.next_cursor_str], timestamp, uniqueID);
+                        if (result.next_cursor_str && result.next_cursor_str !== "0"
+                            && result.next_cursor_str !== 0) {
+                            queue.call(config_js_1.default.service_key + "--getFriends", [screenName, userId, centralNode, nUuid, result.next_cursor_str], timestamp, uniqueID);
                         }
                         else {
                             queue.call("network--estimateCompletion", [config_js_1.default.service_key, centralNode, nUuid]);
@@ -450,8 +458,8 @@ var getUsers = function (centralNode, nUuid, timestamp, uniqueID, queue) {
             var params = {
                 user_id: query.join(","),
             };
-            return cbCall("users_lookup", params).then(function (result) {
-                var errorAnalysis = cbErrorHandling(result);
+            return twCall("users/lookup", params).then(function (result) {
+                var errorAnalysis = twErrorHandling(result);
                 if (errorAnalysis === "again") {
                     queue.call(config_js_1.default.service_key + "--getUsers", [
                         centralNode, nUuid,
@@ -463,7 +471,7 @@ var getUsers = function (centralNode, nUuid, timestamp, uniqueID, queue) {
                     console.log("AAAAHHHHH auth me!");
                 }
                 else {
-                    result.reply.forEach(function (user) {
+                    result.forEach(function (user) {
                         if (!(user.id_str in data[1])) {
                             data[1][user.id_str] = {};
                         }

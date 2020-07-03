@@ -1,6 +1,6 @@
 {
   "name": "@crossfoam/service-twitter",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "Twitter Service module",
   "main": "dst/index.js",
   "scripts": {
@@ -31,15 +31,17 @@
     "ext": "ts"
   },
   "devDependencies": {
-    "@types/bluebird": "^3.5.25",
-    "@types/core-js": "^2.5.0",
-    "nodemon": "^1.18.9",
-    "tslint": "^5.18.0",
-    "web-ext-types": "^3.1.0",
-    "typescript": "^3.2.2"
+    "@types/bluebird": "^3.5.32",
+    "@types/core-js": "^2.5.3",
+    "@types/node": "^14.0.14",
+    "nodemon": "^1.19.4",
+    "tslint": "^5.20.1",
+    "typescript": "^3.9.6",
+    "web-ext-types": "^3.1.0"
   },
   "dependencies": {
     "@crossfoam/data": "^1.0.3",
-    "@crossfoam/ui-helpers": "^1.0.8"
+    "@crossfoam/ui-helpers": "^1.1.0",
+    "twitter-lite": "git://github.com/ultrapop-de/twitter-lite.git"
   }
 }

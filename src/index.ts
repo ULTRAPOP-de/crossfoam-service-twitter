@@ -1,17 +1,12 @@
-// import Codebird from "codebird";
-declare function Codebird(): void;
-
 import * as cfData from "@crossfoam/data";
 import { addHTML } from "@crossfoam/ui-helpers";
+import Twitter from "twitter-lite";
 import config from "../config.js";
 
-// Allow content_scripts to include the services module without codebird
-let cb;
-if (typeof Codebird === "function") {
-  cb = new Codebird();
-  cb.setUseProxy(false);
-  cb.setConsumerKey(config.api_key, config.api_secret);
-}
+const client = new Twitter({
+  consumer_key: config.api_key,
+  consumer_secret: config.api_secret,
+});
 
 const requestTokenKey = "twitter--request-token";
 const authTokenKey = "twitter--auth-token";
@@ -33,19 +28,15 @@ const asyncAuthRequired = async (): Promise<boolean> => {
 };
 
 const testAuth = (data: any): Promise<boolean> => {
-  cb.setToken(data.oauth_token, data.oauth_token_secret);
-  return cb.__call(
-    "account_verifyCredentials",
-    {},
-  ).then((result) => {
-    if ("reply" in result &&
-        "httpstatus" in result.reply &&
-        result.reply.httpstatus === 200
-    ) {
-      return false;
-    }
-    return true;
-  });
+  return twApp(data).get("account/verify_credentials")
+    .then((result) => {
+      if ("_headers" in result && "map" in result._headers &&
+          result._headers.map.status.indexOf("200") !== -1
+      ) {
+        return false;
+      }
+      return true;
+    });
 };
 
 const createOptions = (htmlContainer: HTMLElement) => {
@@ -66,25 +57,34 @@ const createOptions = (htmlContainer: HTMLElement) => {
     });
 };
 
-const cbCall = (endpoint: string, params: {}): Promise<any> => {
+const twApp = (data: { oauth_token: string, oauth_token_secret: string }) => {
+  return new Twitter({
+    access_token_key: data.oauth_token,
+    access_token_secret: data.oauth_token_secret,
+    consumer_key: config.api_key,
+    consumer_secret: config.api_secret,
+  });
+};
+
+const twCall = (endpoint: string, params: {}): Promise<any> => {
   // TODO: Check if authentication is still valid, otherwise throw error
   return cfData.get(authTokenKey)
     .then((data) => {
-      cb.setToken(data.oauth_token, data.oauth_token_secret);
-      return cb.__call(endpoint, params);
+      return twApp(data).get(endpoint, params);
     });
 };
 
-const cbErrorHandling = (result: any): string => {
+const twErrorHandling = (result: any): string => {
+  console.log(result);
   if (
-    ("errors" in result.reply && result.reply.errors.length >= 1)
-    || "error" in result.reply
+    ("errors" in result && result.errors.length >= 1)
+    || "error" in result
   ) {
 
-    if (("errors" in result.reply && result.reply.errors[0].message === "Not authorized.")
-       || result.reply.httpstatus === 401
-       || ("errors" in result.reply && "code" in result.reply.errors[0] && result.reply.errors[0].code === 89)
-       || ("error" in result.reply && result.reply.error === "Not authorized.")) {
+    if (("errors" in result && result.errors[0].message === "Not authorized.")
+       || result.httpstatus === 401
+       || ("errors" in result && "code" in result.errors[0] && result.errors[0].code === 89)
+       || ("error" in result && result.error === "Not authorized.")) {
 
       const isAuthRequired = asyncAuthRequired();
 
@@ -94,7 +94,7 @@ const cbErrorHandling = (result: any): string => {
         return "again";
       }
 
-    } else if ("errors" in result.reply && result.reply.errors[0].code === 88) {
+    } else if ("errors" in result && result.errors[0].code === 88) {
 
       return "again";
 
@@ -104,7 +104,7 @@ const cbErrorHandling = (result: any): string => {
       return "again";
 
     }
-  } else if (result.reply.httpstatus === 0) {
+  } else if (result.httpstatus === 0) {
 
     return "again";
 
@@ -123,55 +123,48 @@ const cbErrorHandling = (result: any): string => {
  * The data object gives access to the data storage functionalities
  */
 
-const auth = (htmlContainer: HTMLElement): Promise<boolean> => {
-  return cb.__call(
-    "oauth_requestToken",
-    {oauth_callback: "oob"},
-  )
-  .then((reply) => {
-    return cfData.set(requestTokenKey, reply.reply);
-  })
-  .then( (requestToken) => {
-    cb.setToken(requestToken.oauth_token, requestToken.oauth_token_secret);
-    return cb.__call(
-      "oauth_authorize",
-      {},
-    );
-  })
-  .then((authUrl) => {
-    return browser.tabs.create({url: authUrl.reply});
-  })
-  .then(() => {
-    // Modify the html add a click listener with connection to new function
-    addHTML(htmlContainer, `<p>${browser.i18n.getMessage("servicesTwitterAuthorizeNote")}</p><br />\
-              <input \
-                type='text' \
-                placeholder='Twitter PIN' \
-                id='twitter--auth-pin' />\
-              <button \
-                id='twitter--auth-button'>\
-                ${browser.i18n.getMessage("servicesTwitterAuthorizeFinish")}\
-              </button>`);
-    document.getElementById("twitter--auth-button")
-      .addEventListener("click", () => {
-        const value = (document.getElementById("twitter--auth-pin") as HTMLInputElement).value;
-        if (value && value.length === 7) {
-          auth2(htmlContainer, value);
-        } else {
-          alert(browser.i18n.getMessage("servicesTwitterAuthAlert"));
-        }
-      });
-  });
+const auth = (htmlContainer: HTMLElement): Promise<void> => {
+  return client.getRequestToken("oob")
+    .then((reply) => {
+      return cfData.set(requestTokenKey, reply);
+    })
+    .then( (requestToken) => {
+      return browser.tabs.create({url: `https://api.twitter.com/oauth/authenticate?oauth_token=${requestToken.oauth_token}`});
+    })
+    .then(() => {
+      // Modify the html add a click listener with connection to new function
+      addHTML(htmlContainer, `<p>${browser.i18n.getMessage("servicesTwitterAuthorizeNote")}</p><br />\
+                <input \
+                  type='text' \
+                  placeholder='Twitter PIN' \
+                  id='twitter--auth-pin' />\
+                <button \
+                  id='twitter--auth-button'>\
+                  ${browser.i18n.getMessage("servicesTwitterAuthorizeFinish")}\
+                </button>`);
+      document.getElementById("twitter--auth-button")
+        .addEventListener("click", () => {
+          const value = (document.getElementById("twitter--auth-pin") as HTMLInputElement).value;
+          if (value && value.length === 7) {
+            auth2(htmlContainer, value);
+          } else {
+            alert(browser.i18n.getMessage("servicesTwitterAuthAlert"));
+          }
+        });
+    });
 };
 
 const auth2 = (htmlContainer: HTMLElement, pin: string) => {
-  return cb.__call(
-    "oauth_accessToken",
-    {oauth_verifier: pin},
-  ).then((reply) => {
-    cfData.set(authTokenKey, reply.reply);
-    addHTML(htmlContainer, browser.i18n.getMessage("servicesTwitterAuthorized"));
-  });
+  return cfData.get(requestTokenKey)
+    .then((token) => {
+      return client.getAccessToken({
+        oauth_token: token.oauth_token,
+        oauth_verifier: pin,
+      });
+    }).then((reply) => {
+      cfData.set(authTokenKey, reply);
+      addHTML(htmlContainer, browser.i18n.getMessage("servicesTwitterAuthorized"));
+    });
 };
 
 const getBiggerPicture = (url: string): string => {
@@ -190,11 +183,11 @@ const getBiggerPicture = (url: string): string => {
 };
 
 const getUser = (screenName: string, timestamp: number, uniqueID: string, queue: any): Promise<any> => {
-  return cbCall("users_show", {
+  return twCall("users/show", {
     screen_name: screenName,
   }).then((result) => {
 
-    const errorAnalysis = cbErrorHandling(result);
+    const errorAnalysis = twErrorHandling(result);
 
     if (errorAnalysis === "again") {
       queue.call(config.service_key + "--getUser", [
@@ -221,12 +214,12 @@ const getUser = (screenName: string, timestamp: number, uniqueID: string, queue:
           return cfData.set(`s--${config.service_key}--nw--${screenName}`, networkObject)
             .then(() => {
               return cfData.set(`s--${config.service_key}--a--${screenName}-${nUuid}--c`, {
-                followers_count: result.reply.followers_count,
-                friends_count: result.reply.friends_count,
+                followers_count: result.followers_count,
+                friends_count: result.friends_count,
                 handle: screenName,
-                id: result.reply.id_str,
-                image: getBiggerPicture(result.reply.profile_image_url_https),
-                name: result.reply.name,
+                id: result.id_str,
+                image: getBiggerPicture(result.profile_image_url_https),
+                name: result.name,
               });
             })
             .then(() => {
@@ -283,9 +276,9 @@ const getFriendsIds = (  screenName: string, userId: string, centralNode: string
           Object.assign(params, {user_id: userId});
         }
 
-        return cbCall("friends_ids", params).then((result) => {
+        return twCall("friends/ids", params).then((result) => {
 
-          const errorAnalysis = cbErrorHandling(result);
+          const errorAnalysis = twErrorHandling(result);
 
           if (errorAnalysis === "again") {
             queue.call(config.service_key + "--getFriendsIds", [
@@ -299,7 +292,7 @@ const getFriendsIds = (  screenName: string, userId: string, centralNode: string
             console.log("AAAAHHHHH auth me!");
           } else {
 
-            if (result.reply.ids === null) {
+            if (result.ids === null) {
 
               // So far not able to figure this out
               queue.call(config.service_key + "--getFriendsIds", [
@@ -314,7 +307,7 @@ const getFriendsIds = (  screenName: string, userId: string, centralNode: string
                 .then((nodes) => {
                   if (screenName === centralNode) {
                     const newNodes = {};
-                    result.reply.ids.forEach( (id) => {
+                    result.ids.forEach( (id) => {
                       newNodes[id] = {
                         followers: [],
                         followers_count: 0,
@@ -329,7 +322,7 @@ const getFriendsIds = (  screenName: string, userId: string, centralNode: string
                     Object.assign(nodes, newNodes);
                   } else {
                     // make sure we don't have duplicates in here...
-                    result.reply.ids.forEach((newNode) => {
+                    result.ids.forEach((newNode) => {
                       if (nodes[userId].friends.indexOf(newNode) === -1) {
                         nodes[userId].friends.push(newNode);
                       }
@@ -338,15 +331,15 @@ const getFriendsIds = (  screenName: string, userId: string, centralNode: string
                   return cfData.set(`s--${config.service_key}--a--${centralNode}-${nUuid}--n`, nodes);
                 })
                 .then((savedData) => {
-                  if (result.reply.next_cursor_str && result.reply.next_cursor_str !== "0"
-                      && result.reply.next_cursor_str !== 0
+                  if (result.next_cursor_str && result.next_cursor_str !== "0"
+                      && result.next_cursor_str !== 0
                       // LIMIT the number of friends of friends to 20.000
                       // TODO: move to configs
                       && savedData[userId].friends.length < 20000) {
 
                     queue.call(config.service_key + "--getFriendsIds", [
                       screenName, userId, centralNode,
-                      nUuid, result.reply.next_cursor_str,
+                      nUuid, result.next_cursor_str,
                     ], timestamp, uniqueID);
 
                     return Promise.resolve();
@@ -406,9 +399,9 @@ const getFriends = (  screenName: string, userId: string, centralNode: string,
           Object.assign(params, {user_id: userId});
         }
 
-        return cbCall("friends_list", params).then((result) => {
+        return twCall("friends/list", params).then((result) => {
 
-          const errorAnalysis = cbErrorHandling(result);
+          const errorAnalysis = twErrorHandling(result);
 
           if (errorAnalysis === "again") {
             queue.call(config.service_key + "--getFriends", [
@@ -424,7 +417,7 @@ const getFriends = (  screenName: string, userId: string, centralNode: string,
             return cfData.get(`s--${config.service_key}--a--${centralNode}-${nUuid}--n`, {})
               .then((nodes) => {
 
-                result.reply.users.forEach((user) => {
+                result.users.forEach((user) => {
                   if (user.id_str  in nodes) {
                     nodes[user.id_str].name = user.name;
                     nodes[user.id_str].handle = user.screen_name;
@@ -440,10 +433,10 @@ const getFriends = (  screenName: string, userId: string, centralNode: string,
 
               })
               .then(() => {
-                if (result.reply.next_cursor_str && result.reply.next_cursor_str !== "0"
-                    && result.reply.next_cursor_str !== 0) {
+                if (result.next_cursor_str && result.next_cursor_str !== "0"
+                    && result.next_cursor_str !== 0) {
                   queue.call(config.service_key + "--getFriends",
-                     [screenName, userId, centralNode, nUuid, result.reply.next_cursor_str],
+                     [screenName, userId, centralNode, nUuid, result.next_cursor_str],
                      timestamp, uniqueID);
                 } else {
                   queue.call("network--estimateCompletion", [config.service_key, centralNode, nUuid]);
@@ -485,9 +478,9 @@ const getUsers = (  centralNode: string, nUuid: string,
         user_id: query.join(","),
       };
 
-      return cbCall("users_lookup", params).then((result) => {
+      return twCall("users/lookup", params).then((result) => {
 
-        const errorAnalysis = cbErrorHandling(result);
+        const errorAnalysis = twErrorHandling(result);
 
         if (errorAnalysis === "again") {
           queue.call(config.service_key + "--getUsers", [
@@ -499,7 +492,7 @@ const getUsers = (  centralNode: string, nUuid: string,
           console.log("AAAAHHHHH auth me!");
         } else {
 
-          result.reply.forEach((user) => {
+          result.forEach((user) => {
             if (! (user.id_str in data[1])) {
               data[1][user.id_str] = {};
             }
