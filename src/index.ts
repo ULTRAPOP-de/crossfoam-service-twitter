@@ -74,6 +74,9 @@ const twCall = (endpoint: string, params: {}): Promise<any> => {
   return cfData.get(authTokenKey)
     .then((data) => {
       return twApp(data).get(endpoint, params);
+    })
+    .catch((err) => {
+      return { errors: [ err ] };
     });
 };
 
@@ -100,9 +103,13 @@ const twErrorHandling = (result: any): string => {
 
       return "again";
 
+    } else if ("errors" in result && "message" in result.errors[0] && result.errors[0].message.indexOf("Network request failed") > -1) {
+
+      return "again";
+
     } else {
 
-      throw new Error(JSON.stringify(result));
+      // throw new Error(JSON.stringify(result));
       return "again";
 
     }

@@ -115,6 +115,9 @@ var twCall = function (endpoint, params) {
     return cfData.get(authTokenKey)
         .then(function (data) {
         return twApp(data).get(endpoint, params);
+    })
+        .catch(function (err) {
+        return { errors: [err] };
     });
 };
 var twErrorHandling = function (result) {
@@ -135,8 +138,11 @@ var twErrorHandling = function (result) {
         else if ("errors" in result && result.errors[0].code === 88) {
             return "again";
         }
+        else if ("errors" in result && "message" in result.errors[0] && result.errors[0].message.indexOf("Network request failed") > -1) {
+            return "again";
+        }
         else {
-            throw new Error(JSON.stringify(result));
+            // throw new Error(JSON.stringify(result));
             return "again";
         }
     }
